@@ -159,3 +159,22 @@ CUA 读取控件树使用的是自动化工具的系统权限；Jumpo 自身未�
 - 生成器：`Tools/generate_app_icon.py`（Pillow），产物为 `Resources/JumpoIcon-1024.png` 和 `Resources/Jumpo.icns`；`Resources/Info.plist` 的 `CFBundleIconFile` 指向 Jumpo，`scripts/build.sh` 将 icns 复制进应用包。
 - 已验证：检查了 16、32、128 像素预览；`iconutil` 可解包出 16/32/128/256/512（含 @2x）共 10 个表示；最终包中的 icns 与资源文件逐字节一致，`codesign --verify --strict dist/Jumpo.app` 通过。macOS 27.0.1 Finder 中先用临时预览副本目视检查，随后轻触并重新打开原应用包目录，也确认 `dist/Jumpo.app` 显示最终图标。
 - 限制：目前仍是 SwiftPM 原型的传统单层 `.icns`，没有 Xcode Icon Composer 的分层动态材质和深色/单色变体。macOS 14/15 未实测。
+
+## 0.3.0 封版与安装（2026-10-06）
+
+封版环境：macOS 27.0.1（26A434），Apple Silicon；Apple Swift 6.4（swiftlang-6.4.0.34.1）；`xcode-select -p` 指向 CommandLineTools；本地 ad hoc 签名，无 Developer ID 与公证。
+
+| 检查 | 结果 |
+|---|---|
+| `bash scripts/swift.sh test --disable-xctest` | 51 项测试通过（`JUMPO_SWIFTPM_NO_SANDBOX=1` 下运行） |
+| `bash scripts/build.sh release` | 优化构建成功，生成 `dist/Jumpo.app` |
+| `codesign --verify --strict dist/Jumpo.app` | 通过；`Signature=adhoc`，`TeamIdentifier=not set` |
+| 包元数据 | `CFBundleIdentifier=io.github.cooper-dev-404.Jumpo`，`CFBundleShortVersionString=0.3.0` |
+| 安装到 `/Applications/Jumpo.app` | 复制成功，签名校验通过，已清除隔离标记 |
+| 从 `/Applications` 启动 | 进程正常启动，设置窗口按预期出现 |
+
+- 侧边栏底部已由通用符号 + 文案改为应用图标 + `Jumpo` + 版本号，版本号来自 `CFBundleShortVersionString`；实测已安装包显示 `0.3.0`，与应用内「关于」一致。
+- Bundle ID 已由占位值 `local.jumpo.prototype` 改为 `io.github.cooper-dev-404.Jumpo`。**这会改变 TCC 记录的身份，旧授权不再适用**：本机辅助功能权限需重新授予，此前记录的窗口相关实测结论对新包同样需要在授权后复测。
+- README 截图取自本机真实界面（`docs/assets/screenshots/`），采集时使用临时环境变量驱动页面切换，该临时代码已在封版前移除，未进入提交。
+- 未验证：新 Bundle ID 下的辅助功能授权与窗口恢复/循环；Gatekeeper 在未清除隔离标记时的首次打开行为；macOS 14/15 未实测。
+- 未验证：`JUMPO_SWIFTPM_NO_SANDBOX` 仅用于绕过沙箱嵌套限制，不改变产物；该开关在常规环境应保持关闭。
