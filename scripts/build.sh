@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+JUMPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$JUMPO_ROOT"
+JUMPO_CONFIGURATION="${1:-debug}"
+bash scripts/swift.sh build -c "$JUMPO_CONFIGURATION"
+JUMPO_BIN="$(bash scripts/swift.sh build -c "$JUMPO_CONFIGURATION" --show-bin-path)"
+JUMPO_BUNDLE="$JUMPO_ROOT/dist/Jumpo.app"
+mkdir -p "$JUMPO_BUNDLE/Contents/MacOS" "$JUMPO_BUNDLE/Contents/Resources"
+cp "$JUMPO_BIN/Jumpo" "$JUMPO_BUNDLE/Contents/MacOS/Jumpo"
+cp Resources/Info.plist "$JUMPO_BUNDLE/Contents/Info.plist"
+cp Resources/Jumpo.icns "$JUMPO_BUNDLE/Contents/Resources/Jumpo.icns"
+/usr/bin/codesign --force --sign - "$JUMPO_BUNDLE"
+/usr/bin/codesign --verify --strict "$JUMPO_BUNDLE"
+printf 'Built %s\n' "$JUMPO_BUNDLE"
